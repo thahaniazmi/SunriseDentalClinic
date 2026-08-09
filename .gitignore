@@ -1,0 +1,7 @@
+# Maven build output
+target/
+dependency-reduced-pom.xml
+*.class
+
+# VS Code
+.vscode/
