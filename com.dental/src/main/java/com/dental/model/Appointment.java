@@ -6,13 +6,15 @@ public class Appointment {
     private String doctor;
     private String date;
     private String time;
+    private String handledBy;
 
-    public Appointment(String id, String patientName, String doctor, String date, String time) {
+    public Appointment(String id, String patientName, String doctor, String date, String time, String handledBy) {
         this.id = id;
         this.patientName = patientName;
         this.doctor = doctor;
         this.date = date;
         this.time = time;
+        this.handledBy = handledBy;
     }
 
     public String getId() {
@@ -35,8 +37,7 @@ public class Appointment {
         return time;
     }
 
-    public void display() {
-        System.out.println("ID: " + id + " | Patient: " + patientName
-                + " | Doctor: " + doctor + " | Date: " + date + " | Time: " + time);
+    public String getHandledBy() {
+        return handledBy;
     }
 }

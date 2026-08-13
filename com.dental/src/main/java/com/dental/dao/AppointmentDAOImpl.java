@@ -51,7 +51,8 @@ public class AppointmentDAOImpl implements AppointmentDAO {
                 rs.getString("patient_name"),
                 rs.getString("doctor"),
                 rs.getString("appointment_date"),
-                rs.getString("appointment_time")
+                rs.getString("appointment_time"),
+                ""
         );
     }
 }

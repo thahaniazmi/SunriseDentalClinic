@@ -31,13 +31,13 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.4.1</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.dental.App</mainClass>
-                        </manifest>
-                    </archive>
-                </configuration>
+<configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.dental.LoginFrame</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -52,7 +52,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.dental.App</mainClass>
+                            <mainClass>com.dental.LoginFrame</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

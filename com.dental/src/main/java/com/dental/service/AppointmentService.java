@@ -7,5 +7,5 @@ import com.dental.model.Appointment;
 public interface AppointmentService {
     void addAppointment(Appointment appointment);
 
-    List<Appointment> getAllAppointments();
+    List<Appointment> viewAppointments();
 }
