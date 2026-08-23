@@ -14,6 +14,9 @@ public class Appointment {
     private String handledBy;
     private String handledById;
 
+    public Appointment() {
+    }
+
     public Appointment(String id, String patientName, String patientPhone, String doctor, double consultationFee,
                        List<TreatmentItem> items, String date, String time, String handledBy, String handledById) {
         this.id = id;

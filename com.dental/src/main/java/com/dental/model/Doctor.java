@@ -5,6 +5,9 @@ public class Doctor {
     private String name;
     private double consultationFee;
 
+    public Doctor() {
+    }
+
     public Doctor(String id, String name, double consultationFee) {
         this.id = id;
         this.name = name;

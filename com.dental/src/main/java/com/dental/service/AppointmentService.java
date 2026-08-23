@@ -22,6 +22,4 @@ public interface AppointmentService {
     List<Appointment> search(String query);
 
     void updateAppointment(Appointment appointment);
-
-    void deleteAppointment(String id);
 }

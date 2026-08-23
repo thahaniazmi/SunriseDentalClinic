@@ -7,6 +7,9 @@ public class User {
     private String password;
     private String role;
 
+    public User() {
+    }
+
     public User(String staffId, String name, String username, String password, String role) {
         this.staffId = staffId;
         this.name = name;

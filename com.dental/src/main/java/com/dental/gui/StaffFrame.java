@@ -1,8 +1,11 @@
-package com.dental;
+package com.dental.gui;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -12,6 +15,9 @@ import java.util.Date;
 import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -24,24 +30,22 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerDateModel;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+import com.dental.PinkButton;
+import com.dental.UIStyles;
+import com.dental.client.ApiClient;
 import com.dental.model.Appointment;
 import com.dental.model.Doctor;
 import com.dental.model.TreatmentItem;
 import com.dental.model.User;
-import com.dental.service.AppointmentService;
 import com.dental.service.BillingService;
-import com.dental.service.DoctorService;
-import com.dental.service.DoctorTreatmentService;
-import com.dental.service.UserService;
 import com.dental.util.ReceiptPrinter;
 
 public class StaffFrame extends JFrame {
-    private AppointmentService appointmentService;
-    private UserService userService;
-    private DoctorService doctorService;
-    private DoctorTreatmentService doctorTreatmentService;
+    private ApiClient api;
     private User loggedInUser;
     private BillingService billingService = new BillingService();
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -56,33 +60,39 @@ public class StaffFrame extends JFrame {
     private JComboBox<String> timeCombo = new JComboBox<>();
     private String editingId;
     private JButton addButton;
-    private JButton deleteButton = new JButton("Delete Appointment");
 
     private JTextField searchField = new JTextField();
     private JTable resultsTable = new JTable();
     private DefaultTableModel resultsTableModel;
     private JTabbedPane tabs;
+    private JPanel tableArea;
     private JTable homeTable = new JTable();
     private DefaultTableModel homeTableModel;
     private JTable upcomingTable = new JTable();
     private DefaultTableModel upcomingTableModel;
 
-    public StaffFrame(AppointmentService appointmentService, UserService userService,
-                      DoctorService doctorService, DoctorTreatmentService doctorTreatmentService,
-                      User loggedInUser) {
-        this.appointmentService = appointmentService;
-        this.userService = userService;
-        this.doctorService = doctorService;
-        this.doctorTreatmentService = doctorTreatmentService;
+    public StaffFrame(ApiClient api, User loggedInUser) {
+        this.api = api;
         this.loggedInUser = loggedInUser;
 
         setTitle("Sunrise Dental Clinic - Staff");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(700, 620);
+        setSize(990, 830);
+        setMinimumSize(new Dimension(900, 700));
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        JLabel userLabel = new JLabel("Logged in as: " + loggedInUser.getName() + " (" + loggedInUser.getRole() + ")");
+        UIStyles.styleField(patientNameField);
+        UIStyles.styleField(phoneField);
+        UIStyles.styleField(extraChargesField);
+        UIStyles.styleField(searchField);
+
+        JLabel userLabel = new JLabel("Welcome, " + loggedInUser.getName());
+        userLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        userLabel.setForeground(UIStyles.TEXT_PRIMARY);
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBorder(new EmptyBorder(10, 16, 10, 16));
+        topPanel.add(userLabel, BorderLayout.WEST);
 
         loadDoctors();
         buildItemsTable();
@@ -95,157 +105,223 @@ public class StaffFrame extends JFrame {
         tabs.addTab("Book Appointment", buildBookPanel());
         tabs.addTab("Manage Appointments", buildManagePanel());
 
-        add(userLabel, BorderLayout.NORTH);
+        JButton helpButton = new PinkButton("Help");
+        helpButton.addActionListener(e -> showHelp());
+
+        JButton logoutButton = new PinkButton("Logout");
+        logoutButton.addActionListener(e -> logout());
+
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        bottomPanel.add(logoutButton);
+        bottomPanel.add(helpButton);
+
+        add(topPanel, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
+        add(bottomPanel, BorderLayout.SOUTH);
 
         setVisible(true);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     private JPanel buildHomePanel() {
+        // two tables stacked with a divider between them
         JLabel todayLabel = new JLabel("Today's Appointments (" + LocalDate.now() + "):");
+        todayLabel.setFont(UIStyles.FONT_BOLD);
+        todayLabel.setForeground(UIStyles.TEXT_PRIMARY);
         JScrollPane tableScroll = new JScrollPane(homeTable);
-        tableScroll.setPreferredSize(new Dimension(660, 240));
+        tableScroll.setPreferredSize(new Dimension(940, 220));
+        tableScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+        tableScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel upcomingLabel = new JLabel("Upcoming Appointments:");
+        JLabel upcomingLabel = new JLabel("Upcoming Appointments (nearest first):");
+        upcomingLabel.setFont(UIStyles.FONT_BOLD);
+        upcomingLabel.setForeground(UIStyles.TEXT_PRIMARY);
         JScrollPane upcomingScroll = new JScrollPane(upcomingTable);
-        upcomingScroll.setPreferredSize(new Dimension(660, 240));
+        upcomingScroll.setPreferredSize(new Dimension(940, 220));
+        upcomingScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+        upcomingScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel tablesPanel = new JPanel(new GridLayout(2, 1));
         JPanel todayPanel = new JPanel(new BorderLayout());
         todayPanel.add(todayLabel, BorderLayout.NORTH);
         todayPanel.add(tableScroll, BorderLayout.CENTER);
+
         JPanel upcomingPanel = new JPanel(new BorderLayout());
         upcomingPanel.add(upcomingLabel, BorderLayout.NORTH);
         upcomingPanel.add(upcomingScroll, BorderLayout.CENTER);
+
+        JPanel tablesPanel = new JPanel(new GridLayout(2, 1, 0, 8));
         tablesPanel.add(todayPanel);
         tablesPanel.add(upcomingPanel);
 
-        JButton refreshButton = new JButton("Refresh");
-        refreshButton.addActionListener(e -> loadHomeTable());
+        JButton refreshButton = new PinkButton("Refresh");
+        refreshButton.addActionListener(e -> refreshHomeTables());
 
-        JButton helpButton = new JButton("Help");
-        helpButton.addActionListener(e -> showHelp());
-
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.addActionListener(e -> logout());
-
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 3));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         buttonPanel.add(refreshButton);
-        buttonPanel.add(helpButton);
-        buttonPanel.add(logoutButton);
 
         JPanel homePanel = new JPanel(new BorderLayout());
+        homePanel.setBorder(new EmptyBorder(12, 16, 12, 16));
         homePanel.add(tablesPanel, BorderLayout.CENTER);
         homePanel.add(buttonPanel, BorderLayout.SOUTH);
         return homePanel;
     }
 
+    private void refreshHomeTables() {
+        // reload the tables after an update
+        loadHomeTable();
+    }
+
+    private void applyItemsTableRenderers() {
+        itemsTable.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JCheckBox box = new JCheckBox();
+                box.setSelected(Boolean.TRUE.equals(value));
+                box.setHorizontalAlignment(JCheckBox.CENTER);
+                box.setVerticalAlignment(JCheckBox.CENTER);
+                box.setOpaque(true);
+                if (isSelected) {
+                    box.setBackground(UIStyles.SELECTION);
+                } else {
+                    box.setBackground((row % 2 == 0) ? UIStyles.BACKGROUND : UIStyles.ALTERNATE_ROW);
+                }
+                return box;
+            }
+        });
+        for (int i = 1; i < itemsTable.getColumnCount(); i++) {
+            itemsTable.getColumnModel().getColumn(i).setCellRenderer(UIStyles.cellRenderer());
+        }
+    }
+
     private JPanel buildBookPanel() {
         dateSpinner = new JSpinner(new SpinnerDateModel(new Date(), null, null, Calendar.DAY_OF_MONTH));
         dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd"));
+        UIStyles.styleField(dateSpinner);
+        UIStyles.styleField(timeCombo);
+        UIStyles.styleField(doctorCombo);
 
         for (String time : new String[]{"08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
                 "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"}) {
             timeCombo.addItem(time);
         }
 
-        JPanel inputPanel = new JPanel(new GridLayout(6, 2));
-        inputPanel.add(new JLabel("Patient name:"));
+        JLabel nameLabel = new JLabel("Patient name:");
+        JLabel phoneLabel = new JLabel("Patient phone:");
+        JLabel doctorLabel = new JLabel("Doctor:");
+        JLabel dateLabel = new JLabel("Date:");
+        JLabel timeLabel = new JLabel("Time:");
+        JLabel chargesLabel = new JLabel("Additional charges (LKR):");
+        UIStyles.styleFieldLabel(nameLabel);
+        UIStyles.styleFieldLabel(phoneLabel);
+        UIStyles.styleFieldLabel(doctorLabel);
+        UIStyles.styleFieldLabel(dateLabel);
+        UIStyles.styleFieldLabel(timeLabel);
+        UIStyles.styleFieldLabel(chargesLabel);
+
+        JPanel inputPanel = new JPanel(new GridLayout(6, 2, 12, 10));
+        inputPanel.add(nameLabel);
         inputPanel.add(patientNameField);
-        inputPanel.add(new JLabel("Patient phone:"));
+        inputPanel.add(phoneLabel);
         inputPanel.add(phoneField);
-        inputPanel.add(new JLabel("Doctor:"));
+        inputPanel.add(doctorLabel);
         inputPanel.add(doctorCombo);
-        inputPanel.add(new JLabel("Date:"));
+        inputPanel.add(dateLabel);
         inputPanel.add(dateSpinner);
-        inputPanel.add(new JLabel("Time:"));
+        inputPanel.add(timeLabel);
         inputPanel.add(timeCombo);
-        inputPanel.add(new JLabel("Additional charges (LKR):"));
+        inputPanel.add(chargesLabel);
         inputPanel.add(extraChargesField);
 
-        JLabel idLabel = new JLabel("Appointment ID will be assigned automatically.");
-        idLabel.setHorizontalAlignment(JLabel.CENTER);
-
-        addButton = new JButton("Add Appointment & Calculate Bill");
+        addButton = new PinkButton("Book Appointment");
         addButton.addActionListener(e -> saveAppointment());
 
-        deleteButton.setEnabled(false);
-        deleteButton.addActionListener(e -> deleteAppointment());
-
-        JButton helpButton = new JButton("Help");
-        helpButton.addActionListener(e -> showHelp());
-
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.addActionListener(e -> logout());
-
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 4));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         buttonPanel.add(addButton);
-        buttonPanel.add(deleteButton);
-        buttonPanel.add(helpButton);
-        buttonPanel.add(logoutButton);
 
         JLabel itemsLabel = new JLabel("Treatments (optional - tick any, amounts auto-fill, edit if needed):");
+        UIStyles.styleFieldLabel(itemsLabel);
         JScrollPane itemsScroll = new JScrollPane(itemsTable);
-        itemsScroll.setPreferredSize(new Dimension(660, 150));
+        itemsScroll.setPreferredSize(new Dimension(940, 170));
+        itemsScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 170));
+        itemsScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel itemsPanel = new JPanel(new BorderLayout());
-        itemsPanel.add(itemsLabel, BorderLayout.NORTH);
-        itemsPanel.add(itemsScroll, BorderLayout.CENTER);
+        JPanel itemsPanel = new JPanel();
+        itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
+        itemsPanel.setBorder(new EmptyBorder(8, 0, 8, 0));
+        itemsPanel.add(itemsLabel);
+        itemsPanel.add(Box.createVerticalStrut(6));
+        itemsPanel.add(itemsScroll);
 
         JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.add(inputPanel, BorderLayout.NORTH);
         centerPanel.add(itemsPanel, BorderLayout.CENTER);
 
         JPanel bookPanel = new JPanel(new BorderLayout());
-        bookPanel.add(idLabel, BorderLayout.NORTH);
+        bookPanel.setBorder(new EmptyBorder(12, 16, 12, 16));
         bookPanel.add(centerPanel, BorderLayout.CENTER);
         bookPanel.add(buttonPanel, BorderLayout.SOUTH);
         return bookPanel;
     }
 
     private JPanel buildManagePanel() {
-        JPanel searchPanel = new JPanel(new GridLayout(1, 2));
-        searchPanel.add(new JLabel("Search (ID, patient name or date yyyy-MM-dd):"));
+        JLabel searchLabel = new JLabel("Search (ID, patient name or date yyyy-MM-dd):");
+        UIStyles.styleFieldLabel(searchLabel);
+        JPanel searchPanel = new JPanel(new GridLayout(1, 2, 12, 0));
+        searchPanel.setBorder(new EmptyBorder(12, 0, 12, 0));
+        searchPanel.add(searchLabel);
         searchPanel.add(searchField);
 
-        JButton searchButton = new JButton("Search");
+        JButton searchButton = new PinkButton("Search");
         searchButton.addActionListener(e -> searchAppointments());
 
-        JButton showAllButton = new JButton("Show All");
-        showAllButton.addActionListener(e -> showAllAppointments());
-
-        JButton viewButton = new JButton("View Details");
+        JButton viewButton = new PinkButton("View Details");
         viewButton.addActionListener(e -> viewDetails());
 
-        JButton editButton = new JButton("Edit Appointment");
+        JButton editButton = new PinkButton("Edit Appointment");
         editButton.addActionListener(e -> editAppointment());
 
-        JButton helpButton = new JButton("Help");
-        helpButton.addActionListener(e -> showHelp());
-
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.addActionListener(e -> logout());
-
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 6));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         buttonPanel.add(searchButton);
-        buttonPanel.add(showAllButton);
         buttonPanel.add(viewButton);
         buttonPanel.add(editButton);
-        buttonPanel.add(helpButton);
-        buttonPanel.add(logoutButton);
 
         JScrollPane tableScroll = new JScrollPane(resultsTable);
+        tableScroll.setPreferredSize(new Dimension(940, 340));
+        tableScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 340));
+        tableScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel tableCard = new JPanel(new BorderLayout());
+        tableCard.add(tableScroll, BorderLayout.CENTER);
+
+        JLabel placeholderLabel = new JLabel("No appointments found", JLabel.CENTER);
+        placeholderLabel.setForeground(UIStyles.PLACEHOLDER);
+        placeholderLabel.setFont(placeholderLabel.getFont().deriveFont(Font.ITALIC));
+
+        tableArea = new JPanel(new CardLayout());
+        tableArea.add(placeholderLabel, "empty");
+        tableArea.add(tableCard, "table");
+        showAllAppointments();
 
         JPanel managePanel = new JPanel(new BorderLayout());
+        managePanel.setBorder(new EmptyBorder(12, 16, 12, 16));
         managePanel.add(searchPanel, BorderLayout.NORTH);
-        managePanel.add(tableScroll, BorderLayout.CENTER);
+        managePanel.add(tableArea, BorderLayout.CENTER);
         managePanel.add(buttonPanel, BorderLayout.SOUTH);
         return managePanel;
     }
 
+    private void updateManageTableState() {
+        if (tableArea == null) {
+            return;
+        }
+        CardLayout layout = (CardLayout) tableArea.getLayout();
+        layout.show(tableArea, resultsTableModel.getRowCount() == 0 ? "empty" : "table");
+    }
+
     private void loadDoctors() {
         doctorCombo.removeAllItems();
-        for (Doctor doctor : doctorService.getAllDoctors()) {
+        for (Doctor doctor : api.getDoctors()) {
             doctorCombo.addItem(doctor);
         }
         doctorCombo.addActionListener(e -> loadItemsForDoctor());
@@ -267,6 +343,9 @@ public class StaffFrame extends JFrame {
             }
         };
         itemsTable.setModel(itemsTableModel);
+        UIStyles.styleTable(itemsTable);
+        itemsTable.setRowHeight(28); // the checkbox rows are a bit smaller
+        applyItemsTableRenderers();
         loadItemsForDoctor();
     }
 
@@ -276,9 +355,10 @@ public class StaffFrame extends JFrame {
         if (selected == null) {
             return;
         }
-        for (TreatmentItem item : doctorTreatmentService.getAllForDoctor(selected.getId())) {
+        for (TreatmentItem item : api.getTreatments(selected.getId())) {
             itemsTableModel.addRow(new Object[]{Boolean.FALSE, item.getName(), item.getCost()});
         }
+        styleTable(itemsTable);
     }
 
     private void buildResultsTable() {
@@ -290,6 +370,22 @@ public class StaffFrame extends JFrame {
             }
         };
         resultsTable.setModel(resultsTableModel);
+        UIStyles.styleTable(resultsTable);
+    }
+
+    private void styleTable(JTable table) {
+        for (int c = 0; c < table.getColumnCount(); c++) {
+            int width = 60;
+            Component header = table.getTableHeader().getDefaultRenderer().getTableCellRendererComponent(
+                    table, table.getColumnName(c), false, false, -1, c);
+            width = Math.max(width, header.getPreferredSize().width + 12);
+            for (int r = 0; r < table.getRowCount(); r++) {
+                Component cell = table.getDefaultRenderer(table.getColumnClass(c)).getTableCellRendererComponent(
+                        table, table.getValueAt(r, c), false, false, r, c);
+                width = Math.max(width, cell.getPreferredSize().width + 12);
+            }
+            table.getColumnModel().getColumn(c).setPreferredWidth(Math.min(width, 280));
+        }
     }
 
     private void buildHomeTable() {
@@ -301,13 +397,14 @@ public class StaffFrame extends JFrame {
             }
         };
         homeTable.setModel(homeTableModel);
+        UIStyles.styleTable(homeTable);
         loadHomeTable();
     }
 
     private void loadHomeTable() {
         homeTableModel.setRowCount(0);
         String today = LocalDate.now().toString();
-        List<Appointment> appointments = appointmentService.searchByDate(today, today);
+        List<Appointment> appointments = api.getAppointmentsByDate(today, today);
         for (Appointment appointment : appointments) {
             homeTableModel.addRow(new Object[]{
                     appointment.getId(),
@@ -319,6 +416,7 @@ public class StaffFrame extends JFrame {
                     appointment.getTotal()
             });
         }
+        styleTable(homeTable);
         loadUpcomingTable();
     }
 
@@ -326,13 +424,14 @@ public class StaffFrame extends JFrame {
         upcomingTableModel = new DefaultTableModel(new String[]{"Appointment ID", "Patient Name", "Phone", "Doctor",
                 "Date", "Time", "Staff ID", "Total (LKR)"}, 0);
         upcomingTable.setModel(upcomingTableModel);
+        UIStyles.styleTable(upcomingTable);
         loadUpcomingTable();
     }
 
     private void loadUpcomingTable() {
         upcomingTableModel.setRowCount(0);
         String today = LocalDate.now().toString();
-        List<Appointment> appointments = appointmentService.searchUpcoming(today);
+        List<Appointment> appointments = api.getUpcomingAppointments(today);
         for (Appointment appointment : appointments) {
             upcomingTableModel.addRow(new Object[]{
                     appointment.getId(),
@@ -345,6 +444,7 @@ public class StaffFrame extends JFrame {
                     appointment.getTotal()
             });
         }
+        styleTable(upcomingTable);
     }
 
     private void saveAppointment() {
@@ -356,6 +456,10 @@ public class StaffFrame extends JFrame {
         }
         if (phone.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter the patient phone number.", "Missing Details", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!phone.matches("\\d{10}")) {
+            JOptionPane.showMessageDialog(this, "Phone number must be exactly 10 digits.", "Invalid Phone", JOptionPane.WARNING_MESSAGE);
             return;
         }
         if (doctorCombo.getSelectedItem() == null) {
@@ -402,13 +506,14 @@ public class StaffFrame extends JFrame {
             if (editingId != null) {
                 Appointment updated = new Appointment(editingId, name, phone, doctor.toString(), doctor.getConsultationFee(),
                         selectedItems, date, time, loggedInUser.getName(), loggedInUser.getStaffId());
-                appointmentService.updateAppointment(updated);
+                api.updateAppointment(updated);
                 JOptionPane.showMessageDialog(this, "Appointment " + editingId + " updated.", "Updated", JOptionPane.INFORMATION_MESSAGE);
                 editingId = null;
-                addButton.setText("Add Appointment & Calculate Bill");
+                addButton.setText("Book Appointment");
                 clearBookForm();
+                tabs.setSelectedIndex(2);
             } else {
-                Appointment saved = appointmentService.addAppointment(new Appointment(null, name, phone, doctor.toString(),
+                Appointment saved = api.addAppointment(new Appointment(null, name, phone, doctor.toString(),
                         doctor.getConsultationFee(), selectedItems, date, time, loggedInUser.getName(), loggedInUser.getStaffId()));
                 showReceipt("Receipt", "Appointment " + saved.getId() + " booked.\n\n"
                         + billingService.generateReceipt(saved));
@@ -426,7 +531,7 @@ public class StaffFrame extends JFrame {
     private void showReceipt(String title, String text) {
         JTextArea area = new JTextArea(text);
         area.setEditable(false);
-        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        area.setFont(new Font("Monospaced", Font.PLAIN, 13));
         area.setRows(20);
         area.setColumns(44);
         int choice = JOptionPane.showOptionDialog(this, new JScrollPane(area), title,
@@ -444,7 +549,6 @@ public class StaffFrame extends JFrame {
         doctorCombo.setSelectedIndex(0);
         dateSpinner.setValue(new Date());
         timeCombo.setSelectedIndex(0);
-        deleteButton.setEnabled(false);
         for (int i = 0; i < itemsTableModel.getRowCount(); i++) {
             itemsTableModel.setValueAt(Boolean.FALSE, i, 0);
         }
@@ -452,7 +556,7 @@ public class StaffFrame extends JFrame {
 
     private void searchAppointments() {
         resultsTableModel.setRowCount(0);
-        List<Appointment> appointments = appointmentService.search(searchField.getText().trim());
+        List<Appointment> appointments = api.searchAppointments(searchField.getText().trim());
         for (Appointment appointment : appointments) {
             resultsTableModel.addRow(new Object[]{
                     appointment.getId(),
@@ -465,6 +569,8 @@ public class StaffFrame extends JFrame {
                     appointment.getTotal()
             });
         }
+        styleTable(resultsTable);
+        updateManageTableState();
     }
 
     private void showAllAppointments() {
@@ -479,7 +585,7 @@ public class StaffFrame extends JFrame {
             return;
         }
         String id = (String) resultsTableModel.getValueAt(row, 0);
-        Appointment appointment = appointmentService.findById(id);
+        Appointment appointment = api.getAppointment(id);
         if (appointment == null) {
             JOptionPane.showMessageDialog(this, "Appointment not found.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
@@ -503,7 +609,7 @@ public class StaffFrame extends JFrame {
             return;
         }
         String id = (String) resultsTableModel.getValueAt(row, 0);
-        Appointment appointment = appointmentService.findById(id);
+        Appointment appointment = api.getAppointment(id);
         if (appointment == null) {
             JOptionPane.showMessageDialog(this, "Appointment not found.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
@@ -537,48 +643,37 @@ public class StaffFrame extends JFrame {
             itemsTableModel.setValueAt(selected, i, 0);
         }
         addButton.setText("Save Changes");
-        deleteButton.setEnabled(true);
         tabs.setSelectedIndex(1);
-        JOptionPane.showMessageDialog(this, "Editing appointment " + id + ". Change the details and press 'Save Changes'.", "Edit Appointment", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private void deleteAppointment() {
-        if (editingId == null) {
-            return;
-        }
-        int confirm = JOptionPane.showConfirmDialog(this, "Delete appointment " + editingId + "? This will remove it from the system.", "Delete Appointment", JOptionPane.YES_NO_OPTION);
-        if (confirm == JOptionPane.YES_OPTION) {
-            appointmentService.deleteAppointment(editingId);
-            JOptionPane.showMessageDialog(this, "Appointment " + editingId + " deleted.", "Deleted", JOptionPane.INFORMATION_MESSAGE);
-            editingId = null;
-            addButton.setText("Add Appointment & Calculate Bill");
-            clearBookForm();
-            loadHomeTable();
-            searchAppointments();
-        }
     }
 
     private void showHelp() {
-        String help = "Sunrise Dental Clinic - Staff Help\n\n"
-                + "Home tab: shows today's appointments and upcoming ones. Press Refresh to update.\n\n"
-                + "Book Appointment tab:\n"
-                + "  - Enter patient name and phone number.\n"
-                + "  - Choose the doctor, date (click arrows or type yyyy-MM-dd) and time.\n"
-                + "  - Treatments are optional: tick the ones the patient needs; prices come from that doctor's own price list.\n"
-                + "  - Additional charges (e.g. medicines) can be typed in the extra field.\n"
-                + "  - Press 'Add Appointment & Calculate Bill' to save the appointment and show the receipt.\n"
-                + "  - The appointment ID is assigned automatically.\n\n"
-                + "Manage Appointments tab:\n"
-                + "  - Type in the search bar and press Search - works with appointment ID, patient name, or a date (yyyy-MM-dd).\n"
-                + "  - Show All - clears the search and lists every appointment.\n"
-                + "  - View Details: shows the full receipt of the selected appointment.\n"
-                + "  - Edit Appointment: loads the selected appointment into the Book tab; change details and press 'Save Changes'.\n"
-                + "  - While editing, 'Delete Appointment' removes that appointment from the system.";
-        JOptionPane.showMessageDialog(this, help, "Help", JOptionPane.INFORMATION_MESSAGE);
+        String help = "<html><body style='font-family:Segoe UI,sans-serif;font-size:13pt;color:#7A7A7A;'>"
+                + "<div style='font-size:17pt;font-weight:bold;color:#7A7A7A;margin:0 0 14px 0;'>Sunrise Dental Clinic - Staff Help</div>"
+                + "<div style='font-weight:bold;color:#7A7A7A;margin:0 0 4px 0;'>Home tab:</div>"
+                + "<ul style='margin-top:2px;'><li>shows today's appointments and upcoming ones. Press Refresh to update.</li></ul>"
+                + "<div style='background-color:#B9B9B9;height:1px;margin:10px 0 12px 0;'></div>"
+                + "<div style='font-weight:bold;color:#7A7A7A;margin:0 0 4px 0;'>Book Appointment tab:</div>"
+                + "<ul style='margin-top:2px;'>"
+                + "<li>Enter patient name and phone number.</li>"
+                + "<li>Choose the doctor, date (click arrows or type yyyy-MM-dd) and time.</li>"
+                + "<li>Treatments are optional: tick the ones the patient needs; prices come from that doctor's own price list.</li>"
+                + "<li>Additional charges (e.g. medicines) can be typed in the extra field.</li>"
+                + "<li>Press <b>'Book Appointment'</b> to save the appointment and show the receipt.</li>"
+                + "<li>The appointment ID is assigned automatically.</li>"
+                + "</ul>"
+                + "<div style='background-color:#B9B9B9;height:1px;margin:10px 0 12px 0;'></div>"
+                + "<div style='font-weight:bold;color:#7A7A7A;margin:0 0 4px 0;'>Manage Appointments tab:</div>"
+                + "<ul style='margin-top:2px;'>"
+                + "<li>Type in the search bar and press Search - works with appointment ID, patient name, or a date (yyyy-MM-dd).</li>"
+                + "<li>View Details: shows the full receipt of the selected appointment.</li>"
+                + "<li>Edit Appointment: loads the selected appointment into the Book tab; change details and press 'Save Changes'.</li>"
+                + "</ul>"
+                + "</body></html>";
+        UIStyles.showHelpDialog(this, help);
     }
 
     private void logout() {
-        new LauncherFrame(userService, appointmentService, doctorService, doctorTreatmentService).setVisible(true);
+        new LauncherFrame(api).setVisible(true);
         dispose();
     }
 }

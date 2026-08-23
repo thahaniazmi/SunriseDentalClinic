@@ -23,10 +23,21 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.53.2.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -34,7 +45,7 @@
 <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>com.dental.LauncherFrame</mainClass>
+                                    <mainClass>com.dental.gui.LauncherFrame</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
@@ -52,7 +63,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                            <mainClass>com.dental.LauncherFrame</mainClass>
+                            <mainClass>com.dental.gui.LauncherFrame</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

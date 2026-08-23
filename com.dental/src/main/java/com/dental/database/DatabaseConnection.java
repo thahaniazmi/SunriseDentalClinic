@@ -1,23 +1,30 @@
-package com.dental.util;
+package com.dental.database;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class DBConnection {
-    private static DBConnection instance;
-    private static final String URL = "jdbc:sqlite:sunrise_clinic.db";
+public class DatabaseConnection {
+    private static DatabaseConnection instance;
+    // tests can point this at a throwaway file with -Ddental.db=...
+    private static final String URL = "jdbc:sqlite:" + System.getProperty("dental.db", "sunrise_clinic.db");
 
-    private DBConnection() {
+    // private constructor so no one else can create another connection
+    private DatabaseConnection() {
     }
 
-    public static DBConnection getInstance() {
+    public static DatabaseConnection getInstance() {
         if (instance == null) {
-            instance = new DBConnection();
+            instance = new DatabaseConnection();
             instance.createTables();
         }
         return instance;
+    }
+
+    // lets the tests start again with a fresh database
+    public static void resetForTests() {
+        instance = null;
     }
 
     public Connection getConnection() throws SQLException {

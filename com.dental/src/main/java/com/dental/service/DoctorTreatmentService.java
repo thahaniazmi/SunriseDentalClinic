@@ -1,57 +1,24 @@
 package com.dental.service;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 
+import com.dental.dao.DoctorTreatmentDAO;
 import com.dental.model.Doctor;
 import com.dental.model.TreatmentItem;
-import com.dental.util.DBConnection;
 
 public class DoctorTreatmentService {
+    private DoctorTreatmentDAO dao = new DoctorTreatmentDAO();
+
     public DoctorTreatmentService() {
         seedIfEmpty();
     }
 
     public List<TreatmentItem> getAllForDoctor(String doctorId) {
-        String sql = "SELECT name, price FROM doctor_treatments WHERE doctor_id = ? ORDER BY name";
-        List<TreatmentItem> treatments = new ArrayList<>();
-        try (Connection conn = DBConnection.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, doctorId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    treatments.add(new TreatmentItem(rs.getString("name"), rs.getDouble("price")));
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not load treatments for doctor", e);
-        }
-        return treatments;
+        return dao.findAllForDoctor(doctorId);
     }
 
     public void updateTreatments(String doctorId, List<TreatmentItem> treatments) {
-        String deleteSql = "DELETE FROM doctor_treatments WHERE doctor_id = ?";
-        String insertSql = "INSERT INTO doctor_treatments (doctor_id, name, price) VALUES (?, ?, ?)";
-        try (Connection conn = DBConnection.getInstance().getConnection();
-             PreparedStatement deleteStmt = conn.prepareStatement(deleteSql);
-             PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-            deleteStmt.setString(1, doctorId);
-            deleteStmt.executeUpdate();
-            for (TreatmentItem treatment : treatments) {
-                insertStmt.setString(1, doctorId);
-                insertStmt.setString(2, treatment.getName());
-                insertStmt.setDouble(3, treatment.getCost());
-                insertStmt.addBatch();
-            }
-            insertStmt.executeBatch();
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not save treatments for doctor", e);
-        }
+        dao.replaceForDoctor(doctorId, treatments);
     }
 
     public void populateDefaults(String doctorId) {
@@ -72,22 +39,12 @@ public class DoctorTreatmentService {
     }
 
     private void seedIfEmpty() {
-        boolean empty = false;
-        String countSql = "SELECT COUNT(*) FROM doctor_treatments";
-        try (Connection conn = DBConnection.getInstance().getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(countSql)) {
-            if (rs.next()) {
-                empty = rs.getInt(1) == 0;
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not check doctor treatments table", e);
+        if (dao.count() > 0) {
+            return;
         }
-        if (empty) {
-            DoctorService doctorService = new DoctorService();
-            for (Doctor doctor : doctorService.getAllDoctors()) {
-                updateTreatments(doctor.getId(), seedListFor(doctor.getName()));
-            }
+        DoctorService doctorService = new DoctorService();
+        for (Doctor doctor : doctorService.getAllDoctors()) {
+            updateTreatments(doctor.getId(), seedListFor(doctor.getName()));
         }
     }
 

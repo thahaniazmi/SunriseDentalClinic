@@ -4,6 +4,9 @@ public class TreatmentItem {
     private String name;
     private double cost;
 
+    public TreatmentItem() {
+    }
+
     public TreatmentItem(String name, double cost) {
         this.name = name;
         this.cost = cost;
