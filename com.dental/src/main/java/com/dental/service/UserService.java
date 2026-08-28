@@ -13,18 +13,13 @@ public class UserService {
     }
 
     private void seedIfEmpty() {
-        // some accounts so the app is not empty on first run
+        // only seed the defaults when the table is empty
+        // so staff added through the Admin UI are kept between restarts
         if (dao.count() > 0) {
             return;
         }
-        addUser(new User("S001", "Admin", "admin@sunshine.lk", "1234", "Admin"));
-        addUser(new User("S002", "User", "user@sunshine.lk", "1234", "Staff"));
-        addUser(new User("S003", "Kasun Perera", "kasun@sunshine.lk", "1234", "Staff"));
-        addUser(new User("S004", "Nadeesha Silva", "nadeesha@sunshine.lk", "1234", "Staff"));
-        addUser(new User("S005", "Ruwan Fernando", "ruwan@sunshine.lk", "1234", "Staff"));
-        addUser(new User("S006", "Dilani Jayasinghe", "dilani@sunshine.lk", "1234", "Staff"));
-        addUser(new User("S007", "Sanduni Weerakkody", "sanduni@sunshine.lk", "1234", "Staff"));
-        addUser(new User("S008", "Lahiru Silva", "lahiru@sunshine.lk", "1234", "Staff"));
+        addUser(new User("S001", "Admin", "admin", "123", "Admin"));
+        addUser(new User("S002", "User", "user", "123", "Staff"));
     }
 
     public User findByUsername(String username) {

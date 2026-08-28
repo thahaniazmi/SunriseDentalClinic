@@ -54,6 +54,7 @@ public class DatabaseConnection {
                 + "CREATE TABLE IF NOT EXISTS appointments ("
                 + "appointment_id TEXT PRIMARY KEY, "
                 + "patient_name TEXT NOT NULL, "
+                + "patient_address TEXT NOT NULL DEFAULT '', "
                 + "patient_phone TEXT NOT NULL, "
                 + "doctor TEXT NOT NULL, "
                 + "consultation_fee REAL NOT NULL, "
@@ -71,8 +72,20 @@ public class DatabaseConnection {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(sql);
+            addAddressColumnIfMissing(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not create tables", e);
+        }
+    }
+
+    // database files made before the address field existed get the column added here
+    private void addAddressColumnIfMissing(Statement stmt) {
+        try {
+            stmt.executeUpdate("ALTER TABLE appointments ADD COLUMN patient_address TEXT NOT NULL DEFAULT ''");
+            stmt.executeUpdate("UPDATE appointments SET patient_address = 'No. 1, Main Street, Colombo' "
+                    + "WHERE patient_address = ''");
+        } catch (SQLException e) {
+            // the column is already there, nothing to do
         }
     }
 }

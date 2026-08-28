@@ -86,6 +86,9 @@ public class DentalServer {
                 String doctorId = path.substring("/api/doctors/".length(), path.length() - "/treatments".length());
                 treatmentService.updateTreatments(doctorId, treatmentsFromJson(body));
                 response = "ok";
+            } else if (path.equals("/api/appointments/count") && method.equals("GET")) {
+                response = String.valueOf(appointmentService.countAppointments(
+                        queryParam(query, "from"), queryParam(query, "to"), queryParam(query, "dentist")));
             } else if (path.equals("/api/appointments/search") && method.equals("GET")) {
                 response = toJsonAppointments(appointmentService.search(queryParam(query, "query")));
             } else if (path.equals("/api/appointments/date") && method.equals("GET")) {
@@ -144,6 +147,7 @@ public class DentalServer {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", appointment.getId());
         map.put("patientName", appointment.getPatientName());
+        map.put("patientAddress", appointment.getPatientAddress());
         map.put("patientPhone", appointment.getPatientPhone());
         map.put("doctor", appointment.getDoctor());
         map.put("consultationFee", appointment.getConsultationFee());
@@ -236,10 +240,10 @@ public class DentalServer {
             }
         }
         return new Appointment(JsonUtil.asString(map.get("id")), JsonUtil.asString(map.get("patientName")),
-                JsonUtil.asString(map.get("patientPhone")), JsonUtil.asString(map.get("doctor")),
-                JsonUtil.asDouble(map.get("consultationFee")), items, JsonUtil.asString(map.get("date")),
-                JsonUtil.asString(map.get("time")), JsonUtil.asString(map.get("handledBy")),
-                JsonUtil.asString(map.get("handledById")));
+                JsonUtil.asString(map.get("patientAddress")), JsonUtil.asString(map.get("patientPhone")),
+                JsonUtil.asString(map.get("doctor")), JsonUtil.asDouble(map.get("consultationFee")), items,
+                JsonUtil.asString(map.get("date")), JsonUtil.asString(map.get("time")),
+                JsonUtil.asString(map.get("handledBy")), JsonUtil.asString(map.get("handledById")));
     }
 
     // ---------- http helpers ----------

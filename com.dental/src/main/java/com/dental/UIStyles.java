@@ -62,6 +62,21 @@ public class UIStyles {
         for (int i = 0; i < table.getColumnCount(); i++) {
             table.getColumnModel().getColumn(i).setCellRenderer(cellRenderer());
         }
+
+        // pink title row with white text, painted by us so it shows up
+        // no matter which look and feel ignores our colours
+        DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                cell.setBackground(PINK);
+                cell.setForeground(Color.WHITE);
+                return cell;
+            }
+        };
+        headerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        table.getTableHeader().setDefaultRenderer(headerRenderer);
     }
 
     public static void styleField(JComponent field) {

@@ -14,7 +14,8 @@ public class BillingServiceTest {
 
     @Test
     public void billShowsLineItemsAndGrandTotal() {
-        Appointment appointment = new Appointment("A200", "Bill Patient", "0779998887", "Dr. Malik", 700.0,
+        Appointment appointment = new Appointment("A200", "Bill Patient", "No. 89, Duplication Road, Colombo 03",
+                "0779998887", "Dr. Malik", 700.0,
                 List.of(new TreatmentItem("Root Canal", 14000.0)),
                 "2026-08-23", "11:30", "Nadeesha Silva", "S004");
 
@@ -27,7 +28,8 @@ public class BillingServiceTest {
 
     @Test
     public void totalMatchesModelCalculation() {
-        Appointment appointment = new Appointment("A201", "Sum Patient", "0711111111", "Dr. Anna", 500.0,
+        Appointment appointment = new Appointment("A201", "Sum Patient", "No. 23, High Level Road, Maharagama",
+                "0711111111", "Dr. Anna", 500.0,
                 List.of(new TreatmentItem("Cleaning", 1500.5)),
                 "2026-08-23", "15:00", "Kasun Perera", "S003");
         assertEquals(2000.5, appointment.getTotal());

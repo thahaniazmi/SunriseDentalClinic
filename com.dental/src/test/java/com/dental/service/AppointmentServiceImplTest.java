@@ -29,7 +29,7 @@ public class AppointmentServiceImplTest {
     }
 
     private Appointment validAppointment(String id, String name, String phone) {
-        return new Appointment(id, name, phone, "Dr. Anna", 500.0,
+        return new Appointment(id, name, "No. 12, Galle Road, Dehiwala", phone, "Dr. Anna", 500.0,
                 List.of(new TreatmentItem("Cleaning", 1500.0)), "2026-08-20", "09:00", "Kasun Perera", "S003");
     }
 
@@ -74,6 +74,30 @@ public class AppointmentServiceImplTest {
         assertNotNull(found);
         assertEquals("Id Patient", found.getPatientName());
         assertEquals(2000.0, found.getTotal());
+    }
+
+    @Test
+    public void patientAddressIsSavedWithTheAppointment() {
+        AppointmentService service = new AppointmentServiceImpl();
+        service.addAppointment(validAppointment("T030", "Address Patient", "0765554443"));
+        assertEquals("No. 12, Galle Road, Dehiwala", service.findById("T030").getPatientAddress());
+    }
+
+    // ---------- reports: the one reusable count function ----------
+
+    @Test
+    public void countForTodayMatchesSeededAppointments() {
+        AppointmentService service = new AppointmentServiceImpl();
+        String today = java.time.LocalDate.now().toString();
+        assertEquals(5, service.countAppointments(today, today, null));
+    }
+
+    @Test
+    public void countFiltersByDentistName() {
+        AppointmentService service = new AppointmentServiceImpl();
+        String today = java.time.LocalDate.now().toString();
+        assertEquals(1, service.countAppointments(today, today, "Dr. Anna"));
+        assertEquals(0, service.countAppointments(today, today, "Dr. Nobody"));
     }
 
     @Test

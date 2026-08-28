@@ -51,6 +51,7 @@ public class StaffFrame extends JFrame {
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     private JTextField patientNameField = new JTextField();
+    private JTextField patientAddressField = new JTextField();
     private JTextField phoneField = new JTextField();
     private JTextField extraChargesField = new JTextField();
     private JComboBox<Doctor> doctorCombo = new JComboBox<>();
@@ -83,6 +84,7 @@ public class StaffFrame extends JFrame {
         setLayout(new BorderLayout());
 
         UIStyles.styleField(patientNameField);
+        UIStyles.styleField(patientAddressField);
         UIStyles.styleField(phoneField);
         UIStyles.styleField(extraChargesField);
         UIStyles.styleField(searchField);
@@ -207,21 +209,25 @@ public class StaffFrame extends JFrame {
         }
 
         JLabel nameLabel = new JLabel("Patient name:");
+        JLabel addressLabel = new JLabel("Patient address:");
         JLabel phoneLabel = new JLabel("Patient phone:");
         JLabel doctorLabel = new JLabel("Doctor:");
         JLabel dateLabel = new JLabel("Date:");
         JLabel timeLabel = new JLabel("Time:");
         JLabel chargesLabel = new JLabel("Additional charges (LKR):");
         UIStyles.styleFieldLabel(nameLabel);
+        UIStyles.styleFieldLabel(addressLabel);
         UIStyles.styleFieldLabel(phoneLabel);
         UIStyles.styleFieldLabel(doctorLabel);
         UIStyles.styleFieldLabel(dateLabel);
         UIStyles.styleFieldLabel(timeLabel);
         UIStyles.styleFieldLabel(chargesLabel);
 
-        JPanel inputPanel = new JPanel(new GridLayout(6, 2, 12, 10));
+        JPanel inputPanel = new JPanel(new GridLayout(7, 2, 12, 10));
         inputPanel.add(nameLabel);
         inputPanel.add(patientNameField);
+        inputPanel.add(addressLabel);
+        inputPanel.add(patientAddressField);
         inputPanel.add(phoneLabel);
         inputPanel.add(phoneField);
         inputPanel.add(doctorLabel);
@@ -454,6 +460,11 @@ public class StaffFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "Please enter the patient name.", "Missing Details", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        String address = patientAddressField.getText().trim();
+        if (address.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter the patient address.", "Missing Details", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         if (phone.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter the patient phone number.", "Missing Details", JOptionPane.WARNING_MESSAGE);
             return;
@@ -504,8 +515,8 @@ public class StaffFrame extends JFrame {
 
         try {
             if (editingId != null) {
-                Appointment updated = new Appointment(editingId, name, phone, doctor.toString(), doctor.getConsultationFee(),
-                        selectedItems, date, time, loggedInUser.getName(), loggedInUser.getStaffId());
+                Appointment updated = new Appointment(editingId, name, address, phone, doctor.toString(),
+                        doctor.getConsultationFee(), selectedItems, date, time, loggedInUser.getName(), loggedInUser.getStaffId());
                 api.updateAppointment(updated);
                 JOptionPane.showMessageDialog(this, "Appointment " + editingId + " updated.", "Updated", JOptionPane.INFORMATION_MESSAGE);
                 editingId = null;
@@ -513,7 +524,7 @@ public class StaffFrame extends JFrame {
                 clearBookForm();
                 tabs.setSelectedIndex(2);
             } else {
-                Appointment saved = api.addAppointment(new Appointment(null, name, phone, doctor.toString(),
+                Appointment saved = api.addAppointment(new Appointment(null, name, address, phone, doctor.toString(),
                         doctor.getConsultationFee(), selectedItems, date, time, loggedInUser.getName(), loggedInUser.getStaffId()));
                 showReceipt("Receipt", "Appointment " + saved.getId() + " booked.\n\n"
                         + billingService.generateReceipt(saved));
@@ -544,6 +555,7 @@ public class StaffFrame extends JFrame {
 
     private void clearBookForm() {
         patientNameField.setText("");
+        patientAddressField.setText("");
         phoneField.setText("");
         extraChargesField.setText("");
         doctorCombo.setSelectedIndex(0);
@@ -593,6 +605,7 @@ public class StaffFrame extends JFrame {
         StringBuilder details = new StringBuilder();
         details.append("Appointment ID: ").append(appointment.getId()).append("\n");
         details.append("Patient: ").append(appointment.getPatientName()).append("\n");
+        details.append("Address: ").append(appointment.getPatientAddress()).append("\n");
         details.append("Phone: ").append(appointment.getPatientPhone()).append("\n");
         details.append("Doctor: ").append(appointment.getDoctor()).append("\n");
         details.append("Date: ").append(appointment.getDate()).append("\n");
@@ -617,6 +630,7 @@ public class StaffFrame extends JFrame {
 
         editingId = appointment.getId();
         patientNameField.setText(appointment.getPatientName());
+        patientAddressField.setText(appointment.getPatientAddress());
         phoneField.setText(appointment.getPatientPhone());
         for (int i = 0; i < doctorCombo.getItemCount(); i++) {
             if (doctorCombo.getItemAt(i).toString().equals(appointment.getDoctor())) {

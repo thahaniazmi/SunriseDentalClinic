@@ -109,6 +109,14 @@ public class ApiClient {
         return appointmentsFromJson(request("GET", "/appointments/staff/" + staffId));
     }
 
+    public int countAppointments(String from, String to, String dentist) {
+        String path = "/appointments/count?from=" + from + "&to=" + to;
+        if (dentist != null) {
+            path += "&dentist=" + URLEncoder.encode(dentist, StandardCharsets.UTF_8);
+        }
+        return Integer.parseInt(request("GET", path).trim());
+    }
+
     public Appointment addAppointment(Appointment appointment) {
         Object parsed = JsonUtil.parse(request("POST", "/appointments", JsonUtil.toJson(appointmentToMap(appointment))));
         return appointmentFromMap(JsonUtil.asMap(parsed));
@@ -159,16 +167,17 @@ public class ApiClient {
             }
         }
         return new Appointment(JsonUtil.asString(map.get("id")), JsonUtil.asString(map.get("patientName")),
-                JsonUtil.asString(map.get("patientPhone")), JsonUtil.asString(map.get("doctor")),
-                JsonUtil.asDouble(map.get("consultationFee")), items, JsonUtil.asString(map.get("date")),
-                JsonUtil.asString(map.get("time")), JsonUtil.asString(map.get("handledBy")),
-                JsonUtil.asString(map.get("handledById")));
+                JsonUtil.asString(map.get("patientAddress")), JsonUtil.asString(map.get("patientPhone")),
+                JsonUtil.asString(map.get("doctor")), JsonUtil.asDouble(map.get("consultationFee")), items,
+                JsonUtil.asString(map.get("date")), JsonUtil.asString(map.get("time")),
+                JsonUtil.asString(map.get("handledBy")), JsonUtil.asString(map.get("handledById")));
     }
 
     private Map<String, Object> appointmentToMap(Appointment appointment) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", appointment.getId());
         map.put("patientName", appointment.getPatientName());
+        map.put("patientAddress", appointment.getPatientAddress());
         map.put("patientPhone", appointment.getPatientPhone());
         map.put("doctor", appointment.getDoctor());
         map.put("consultationFee", appointment.getConsultationFee());

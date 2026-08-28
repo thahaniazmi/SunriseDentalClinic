@@ -28,11 +28,35 @@ public class AppointmentDAO {
         }
     }
 
+    // one reusable count used by all the report numbers
+    public int count(String fromDate, String toDate, String dentistName) {
+        String sql = "SELECT COUNT(*) FROM appointments WHERE appointment_date >= ? AND appointment_date <= ?";
+        if (dentistName != null) {
+            sql += " AND doctor = ?";
+        }
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, fromDate);
+            stmt.setString(2, toDate);
+            if (dentistName != null) {
+                stmt.setString(3, dentistName);
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not count appointments", e);
+        }
+    }
+
     public Appointment add(Appointment appointment) {
         String id = appointment.getId() == null || appointment.getId().isEmpty() ? nextId() : appointment.getId();
         String insertAppointment = "INSERT INTO appointments "
-                + "(appointment_id, patient_name, patient_phone, doctor, consultation_fee, appointment_date, appointment_time, handled_by, handled_by_id) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + "(appointment_id, patient_name, patient_address, patient_phone, doctor, consultation_fee, appointment_date, appointment_time, handled_by, handled_by_id) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         String insertItem = "INSERT INTO appointment_items (appointment_id, name, amount) VALUES (?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -41,13 +65,14 @@ public class AppointmentDAO {
 
             appStmt.setString(1, id);
             appStmt.setString(2, appointment.getPatientName());
-            appStmt.setString(3, appointment.getPatientPhone());
-            appStmt.setString(4, appointment.getDoctor());
-            appStmt.setDouble(5, appointment.getConsultationFee());
-            appStmt.setString(6, appointment.getDate());
-            appStmt.setString(7, appointment.getTime());
-            appStmt.setString(8, appointment.getHandledBy());
-            appStmt.setString(9, appointment.getHandledById());
+            appStmt.setString(3, appointment.getPatientAddress());
+            appStmt.setString(4, appointment.getPatientPhone());
+            appStmt.setString(5, appointment.getDoctor());
+            appStmt.setDouble(6, appointment.getConsultationFee());
+            appStmt.setString(7, appointment.getDate());
+            appStmt.setString(8, appointment.getTime());
+            appStmt.setString(9, appointment.getHandledBy());
+            appStmt.setString(10, appointment.getHandledById());
             appStmt.executeUpdate();
 
             for (TreatmentItem item : appointment.getItems()) {
@@ -58,9 +83,10 @@ public class AppointmentDAO {
             }
             itemStmt.executeBatch();
 
-            return new Appointment(id, appointment.getPatientName(), appointment.getPatientPhone(),
-                    appointment.getDoctor(), appointment.getConsultationFee(), appointment.getItems(),
-                    appointment.getDate(), appointment.getTime(), appointment.getHandledBy(), appointment.getHandledById());
+            return new Appointment(id, appointment.getPatientName(), appointment.getPatientAddress(),
+                    appointment.getPatientPhone(), appointment.getDoctor(), appointment.getConsultationFee(),
+                    appointment.getItems(), appointment.getDate(), appointment.getTime(),
+                    appointment.getHandledBy(), appointment.getHandledById());
         } catch (SQLException e) {
             throw new RuntimeException("Could not add appointment", e);
         }
@@ -202,7 +228,7 @@ public class AppointmentDAO {
     }
 
     public void update(Appointment appointment) {
-        String sql = "UPDATE appointments SET patient_name = ?, patient_phone = ?, doctor = ?, consultation_fee = ?, "
+        String sql = "UPDATE appointments SET patient_name = ?, patient_address = ?, patient_phone = ?, doctor = ?, consultation_fee = ?, "
                 + "appointment_date = ?, appointment_time = ?, handled_by = ?, handled_by_id = ? WHERE appointment_id = ?";
         String deleteItems = "DELETE FROM appointment_items WHERE appointment_id = ?";
         String insertItem = "INSERT INTO appointment_items (appointment_id, name, amount) VALUES (?, ?, ?)";
@@ -213,14 +239,15 @@ public class AppointmentDAO {
              PreparedStatement itemStmt = conn.prepareStatement(insertItem)) {
 
             stmt.setString(1, appointment.getPatientName());
-            stmt.setString(2, appointment.getPatientPhone());
-            stmt.setString(3, appointment.getDoctor());
-            stmt.setDouble(4, appointment.getConsultationFee());
-            stmt.setString(5, appointment.getDate());
-            stmt.setString(6, appointment.getTime());
-            stmt.setString(7, appointment.getHandledBy());
-            stmt.setString(8, appointment.getHandledById());
-            stmt.setString(9, appointment.getId());
+            stmt.setString(2, appointment.getPatientAddress());
+            stmt.setString(3, appointment.getPatientPhone());
+            stmt.setString(4, appointment.getDoctor());
+            stmt.setDouble(5, appointment.getConsultationFee());
+            stmt.setString(6, appointment.getDate());
+            stmt.setString(7, appointment.getTime());
+            stmt.setString(8, appointment.getHandledBy());
+            stmt.setString(9, appointment.getHandledById());
+            stmt.setString(10, appointment.getId());
             stmt.executeUpdate();
 
             delStmt.setString(1, appointment.getId());
@@ -235,6 +262,22 @@ public class AppointmentDAO {
             itemStmt.executeBatch();
         } catch (SQLException e) {
             throw new RuntimeException("Could not update appointment", e);
+        }
+    }
+
+    // older rows point at staff accounts that no longer exist,
+    // so point them at the two accounts we always have
+    public void remapOldStaffToCurrentAccounts() {
+        String toAdmin = "UPDATE appointments SET handled_by_id = 'S001', handled_by = 'Admin' "
+                + "WHERE handled_by_id IN ('S003', 'S005', 'S007')";
+        String toUser = "UPDATE appointments SET handled_by_id = 'S002', handled_by = 'User' "
+                + "WHERE handled_by_id IN ('S004', 'S006', 'S008')";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(toAdmin);
+            stmt.executeUpdate(toUser);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not update staff on appointments", e);
         }
     }
 
@@ -257,6 +300,7 @@ public class AppointmentDAO {
         return new Appointment(
                 id,
                 rs.getString("patient_name"),
+                rs.getString("patient_address"),
                 rs.getString("patient_phone"),
                 rs.getString("doctor"),
                 rs.getDouble("consultation_fee"),

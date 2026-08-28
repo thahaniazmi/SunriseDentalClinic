@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.Insets;
 
 import javax.swing.BorderFactory;
@@ -14,6 +15,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
 import javax.swing.UIManager;
 
 import com.dental.PinkButton;
@@ -24,22 +27,21 @@ import com.dental.server.DentalServer;
 
 public class LauncherFrame extends JFrame {
     private ApiClient api;
+    private JTextField usernameField = new JTextField();
+    private JPasswordField passwordField = new JPasswordField();
 
     public LauncherFrame(ApiClient api) {
         this.api = api;
 
         applyTheme();
 
-        setTitle("Sunrise Dental Clinic - Choose Interface");
+        setTitle("Sunrise Dental Clinic - Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(440, 420);
-        setMinimumSize(new Dimension(440, 420));
         setResizable(false);
-        setLocationRelativeTo(null);
 
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        content.setBorder(BorderFactory.createEmptyBorder(24, 40, 24, 40));
 
         JLabel titleLabel = new JLabel("Sunrise Dental Clinic");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 26));
@@ -47,38 +49,83 @@ public class LauncherFrame extends JFrame {
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel questionLabel = new JLabel("Which interface do you want to open?");
+        JLabel questionLabel = new JLabel("Please log in to continue.");
         questionLabel.setForeground(UIStyles.TEXT_SECONDARY);
         questionLabel.setHorizontalAlignment(JLabel.CENTER);
         questionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JButton userButton = new PinkButton("User Interface");
-        userButton.addActionListener(e -> openUserInterface());
-        sizeLauncherButton(userButton);
+        UIStyles.styleField(usernameField);
+        UIStyles.styleField(passwordField);
 
-        JButton adminButton = new PinkButton("Admin Interface");
-        adminButton.addActionListener(e -> openAdminInterface());
-        sizeLauncherButton(adminButton);
+        JLabel usernameLabel = new JLabel("Username:");
+        JLabel passwordLabel = new JLabel("Password:");
+        UIStyles.styleFieldLabel(usernameLabel);
+        UIStyles.styleFieldLabel(passwordLabel);
+
+        JPanel formPanel = new JPanel(new GridLayout(2, 2, 12, 12));
+        formPanel.add(usernameLabel);
+        formPanel.add(usernameField);
+        formPanel.add(passwordLabel);
+        formPanel.add(passwordField);
+
+        JButton loginButton = new PinkButton("Login");
+        loginButton.addActionListener(e -> login());
+        sizeLoginButton(loginButton);
 
         JButton exitButton = new PinkButton("Exit");
         exitButton.addActionListener(e -> System.exit(0));
-        sizeLauncherButton(exitButton);
+        sizeLoginButton(exitButton);
 
         content.add(Box.createVerticalGlue());
         content.add(titleLabel);
-        content.add(Box.createVerticalStrut(10));
+        content.add(Box.createVerticalStrut(8));
         content.add(questionLabel);
-        content.add(Box.createVerticalStrut(24));
-        content.add(userButton);
-        content.add(Box.createVerticalStrut(12));
-        content.add(adminButton);
-        content.add(Box.createVerticalStrut(12));
+        content.add(Box.createVerticalStrut(20));
+        content.add(formPanel);
+        content.add(Box.createVerticalStrut(18));
+        content.add(loginButton);
+        content.add(Box.createVerticalStrut(10));
         content.add(exitButton);
         content.add(Box.createVerticalGlue());
 
         setContentPane(content);
 
+        pack();
+        setLocationRelativeTo(null);
+
         setVisible(true);
+    }
+
+    private void login() {
+        String username = usernameField.getText().trim();
+        String password = new String(passwordField.getPassword());
+
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter the username and password.", "Missing Details",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        User user = api.findByUsername(username);
+        if (user == null || !user.getPassword().equals(password)) {
+            JOptionPane.showMessageDialog(this, "Wrong username or password.", "Login Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        dispose();
+        if (user.getRole().equalsIgnoreCase("Admin")) {
+            new AdminFrame(api, user);
+        } else {
+            new StaffFrame(api, user);
+        }
+    }
+
+    private static void sizeLoginButton(JButton button) {
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setPreferredSize(new Dimension(340, 46));
+        button.setMinimumSize(new Dimension(340, 46));
+        button.setMaximumSize(new Dimension(340, 46));
     }
 
     public static void applyTheme() {
@@ -125,39 +172,6 @@ public class LauncherFrame extends JFrame {
         UIManager.put("Label.foreground", UIStyles.TEXT_PRIMARY);
         UIManager.put("TextField.inactiveForeground", UIStyles.PLACEHOLDER);
         UIManager.put("Button.margin", new Insets(10, 16, 10, 16));
-    }
-
-    private static void sizeLauncherButton(JButton button) {
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setPreferredSize(new Dimension(340, 50));
-        button.setMinimumSize(new Dimension(340, 50));
-        button.setMaximumSize(new Dimension(340, 50));
-    }
-
-    private void openUserInterface() {
-        try {
-            User user = api.findByUsername("user@sunshine.lk");
-            if (user == null) {
-                user = new User("S001", "User", "user@sunshine.lk", "1234", "Staff");
-            }
-            dispose();
-            new StaffFrame(api, user);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Could not open the User Interface.\nIs the DentalServer running? (" + ex.getMessage() + ")",
-                    "Server Unreachable", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void openAdminInterface() {
-        try {
-            dispose();
-            new AdminFrame(api);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Could not open the Admin Interface.\nIs the DentalServer running? (" + ex.getMessage() + ")",
-                    "Server Unreachable", JOptionPane.ERROR_MESSAGE);
-        }
     }
 
     public static void main(String[] args) {

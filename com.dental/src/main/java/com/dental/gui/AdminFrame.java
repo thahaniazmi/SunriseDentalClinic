@@ -7,6 +7,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,8 +52,14 @@ public class AdminFrame extends JFrame {
     private DefaultTableModel staffFilterTableModel;
     private JTable staffFilterTable;
     private JPanel treatmentArea;
+    private JLabel todayCount;
+    private JLabel weekCount;
+    private JLabel monthCount;
+    private JLabel allTimeCount;
+    private DefaultTableModel dentistTableModel;
+    private JTable dentistReportTable;
 
-    public AdminFrame(ApiClient api) {
+    public AdminFrame(ApiClient api, User loggedInUser) {
         this.api = api;
 
         setTitle("Sunrise Dental Clinic - Admin");
@@ -62,8 +70,7 @@ public class AdminFrame extends JFrame {
 
         UIStyles.styleField(logSearchField);
 
-        User admin = api.findByUsername("admin@sunshine.lk");
-        JLabel userLabel = new JLabel("Welcome, " + (admin == null ? "Admin" : admin.getName()));
+        JLabel userLabel = new JLabel("Welcome, " + loggedInUser.getName());
         userLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
         userLabel.setForeground(UIStyles.TEXT_PRIMARY);
         JPanel topPanel = new JPanel(new BorderLayout());
@@ -71,6 +78,7 @@ public class AdminFrame extends JFrame {
         topPanel.add(userLabel, BorderLayout.WEST);
 
         JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Reports", buildReportsPanel());
         tabs.addTab("Staff Accounts", buildStaffPanel());
         tabs.addTab("Doctors", buildDoctorsPanel());
         tabs.addTab("Appointment Log", buildLogPanel());
@@ -292,6 +300,84 @@ public class AdminFrame extends JFrame {
         panel.add(buttonPanel, BorderLayout.SOUTH);
         panel.add(staffFilterPanel, BorderLayout.PAGE_END);
         return panel;
+    }
+
+    private JPanel buildReportsPanel() {
+        todayCount = new JLabel("0", JLabel.CENTER);
+        weekCount = new JLabel("0", JLabel.CENTER);
+        monthCount = new JLabel("0", JLabel.CENTER);
+        allTimeCount = new JLabel("0", JLabel.CENTER);
+
+        JPanel summaryPanel = new JPanel(new GridLayout(1, 4, 12, 12));
+        summaryPanel.add(summaryCard(todayCount, "Appointments Today"));
+        summaryPanel.add(summaryCard(weekCount, "Appointments This Week"));
+        summaryPanel.add(summaryCard(monthCount, "Appointments This Month"));
+        summaryPanel.add(summaryCard(allTimeCount, "Appointments All Time"));
+
+        dentistTableModel = new DefaultTableModel(new String[]{"Dentist", "Appointments This Month"}, 0);
+        dentistReportTable = new JTable(dentistTableModel);
+        UIStyles.styleTable(dentistReportTable);
+
+        JScrollPane dentistScroll = new JScrollPane(dentistReportTable);
+        dentistScroll.setPreferredSize(new Dimension(940, 220));
+        dentistScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+
+        JLabel dentistLabel = new JLabel("Dentist breakdown (this month):");
+        UIStyles.styleFieldLabel(dentistLabel);
+
+        JPanel dentistSection = new JPanel(new BorderLayout());
+        dentistSection.add(dentistLabel, BorderLayout.NORTH);
+        dentistSection.add(dentistScroll, BorderLayout.CENTER);
+
+        JButton refreshButton = new PinkButton("Refresh");
+        refreshButton.addActionListener(e -> loadReports());
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        buttonPanel.add(refreshButton);
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(new EmptyBorder(12, 16, 12, 16));
+        panel.add(summaryPanel, BorderLayout.NORTH);
+        panel.add(dentistSection, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        loadReports();
+        return panel;
+    }
+
+    // one small card showing a number with a title under it
+    private JPanel summaryCard(JLabel countLabel, String title) {
+        countLabel.setFont(new Font("Segoe UI", Font.BOLD, 30));
+        countLabel.setForeground(UIStyles.PINK);
+
+        JLabel titleLabel = new JLabel(title, JLabel.CENTER);
+        UIStyles.styleFieldLabel(titleLabel);
+
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBorder(new EmptyBorder(10, 10, 10, 10));
+        card.add(countLabel, BorderLayout.CENTER);
+        card.add(titleLabel, BorderLayout.SOUTH);
+        return card;
+    }
+
+    private void loadReports() {
+        LocalDate today = LocalDate.now();
+        String todayText = today.toString();
+        String weekStart = today.with(DayOfWeek.MONDAY).toString();
+        String weekEnd = today.with(DayOfWeek.MONDAY).plusDays(6).toString();
+        String monthStart = today.withDayOfMonth(1).toString();
+        String monthEnd = today.withDayOfMonth(today.lengthOfMonth()).toString();
+
+        todayCount.setText(String.valueOf(api.countAppointments(todayText, todayText, null)));
+        weekCount.setText(String.valueOf(api.countAppointments(weekStart, weekEnd, null)));
+        monthCount.setText(String.valueOf(api.countAppointments(monthStart, monthEnd, null)));
+        allTimeCount.setText(String.valueOf(api.countAppointments("0000-01-01", "9999-12-31", null)));
+
+        dentistTableModel.setRowCount(0);
+        for (Doctor doctor : api.getDoctors()) {
+            int count = api.countAppointments(monthStart, monthEnd, doctor.getName());
+            dentistTableModel.addRow(new Object[]{doctor.getName(), count});
+        }
     }
 
     private void styleTable(JTable table) {

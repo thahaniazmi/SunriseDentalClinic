@@ -5,6 +5,7 @@ import java.util.List;
 public class Appointment {
     private String id;
     private String patientName;
+    private String patientAddress;
     private String patientPhone;
     private String doctor;
     private double consultationFee;
@@ -17,10 +18,12 @@ public class Appointment {
     public Appointment() {
     }
 
-    public Appointment(String id, String patientName, String patientPhone, String doctor, double consultationFee,
-                       List<TreatmentItem> items, String date, String time, String handledBy, String handledById) {
+    public Appointment(String id, String patientName, String patientAddress, String patientPhone, String doctor,
+                       double consultationFee, List<TreatmentItem> items, String date, String time,
+                       String handledBy, String handledById) {
         this.id = id;
         this.patientName = patientName;
+        this.patientAddress = patientAddress;
         this.patientPhone = patientPhone;
         this.doctor = doctor;
         this.consultationFee = consultationFee;
@@ -37,6 +40,10 @@ public class Appointment {
 
     public String getPatientName() {
         return patientName;
+    }
+
+    public String getPatientAddress() {
+        return patientAddress;
     }
 
     public String getPatientPhone() {

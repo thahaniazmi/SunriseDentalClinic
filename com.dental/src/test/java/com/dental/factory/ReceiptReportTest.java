@@ -12,7 +12,8 @@ import com.dental.model.TreatmentItem;
 public class ReceiptReportTest {
 
     private Appointment sampleAppointment() {
-        return new Appointment("A100", "Test Patient", "0771234567", "Dr. Anna", 500.0,
+        return new Appointment("A100", "Test Patient", "No. 12, Galle Road, Dehiwala", "0771234567", "Dr. Anna",
+                500.0,
                 List.of(new TreatmentItem("Cleaning", 1500.0), new TreatmentItem("Filling", 3250.0)),
                 "2026-08-23", "09:00", "Kasun Perera", "S003");
     }
@@ -22,6 +23,7 @@ public class ReceiptReportTest {
         String receipt = new ReceiptReport(sampleAppointment()).generate();
         assertTrue(receipt.contains("A100"));
         assertTrue(receipt.contains("Test Patient"));
+        assertTrue(receipt.contains("No. 12, Galle Road, Dehiwala"));
         assertTrue(receipt.contains("Dr. Anna"));
         assertTrue(receipt.contains("2026-08-23"));
         assertTrue(receipt.contains("09:00"));
@@ -43,8 +45,8 @@ public class ReceiptReportTest {
 
     @Test
     public void boundaryNoTreatmentsStillPrintsTotal() {
-        Appointment empty = new Appointment("A101", "Empty Patient", "0770000000", "Dr. Anna", 500.0,
-                List.of(), "2026-08-23", "10:00", "Kasun Perera", "S003");
+        Appointment empty = new Appointment("A101", "Empty Patient", "No. 5, Lake Drive, Kandy", "0770000000",
+                "Dr. Anna", 500.0, List.of(), "2026-08-23", "10:00", "Kasun Perera", "S003");
         String receipt = new ReceiptReport(empty).generate();
         assertTrue(receipt.contains("TOTAL"));
         assertTrue(receipt.contains(String.format("%12.2f", 500.0).trim()));

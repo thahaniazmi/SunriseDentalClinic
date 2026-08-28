@@ -28,10 +28,21 @@ public class UserServiceTest {
 
     @Test
     public void findsSeededStaffByUsername() {
-        User admin = service.findByUsername("admin@sunshine.lk");
+        User admin = service.findByUsername("admin");
         assertNotNull(admin);
         assertEquals("S001", admin.getStaffId());
+        assertEquals("123", admin.getPassword());
         assertEquals("Admin", admin.getRole());
+
+        User user = service.findByUsername("user");
+        assertNotNull(user);
+        assertEquals("S002", user.getStaffId());
+        assertEquals("Staff", user.getRole());
+    }
+
+    @Test
+    public void systemOnlyHasTheTwoAccounts() {
+        assertEquals(2, service.getAllUsers().size());
     }
 
     @Test

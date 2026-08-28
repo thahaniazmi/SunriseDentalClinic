@@ -22,4 +22,6 @@ public interface AppointmentService {
     List<Appointment> search(String query);
 
     void updateAppointment(Appointment appointment);
+
+    int countAppointments(String fromDate, String toDate, String dentistName);
 }
